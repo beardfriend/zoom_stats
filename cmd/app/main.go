@@ -30,6 +30,7 @@ func main() {
 	chat.POST("/upload", chatAPI.Upload)
 	chat.GET("/", chatAPI.GetList)
 	chat.GET("/most-talkers", chatAPI.GetMostTalkers)
+	chat.GET("/participation", chatAPI.GetParticipation)
 	chat.GET("/most-reacted-people", chatAPI.GetMostReactedPeople)
 	chat.GET("/most-reactors", chatAPI.GetMostReactor)
 

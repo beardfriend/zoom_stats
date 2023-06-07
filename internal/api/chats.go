@@ -35,6 +35,66 @@ type ReactorResponse struct {
 	Count int    `json:"count" bson:"count"`
 }
 
+type ParticipationResponse struct {
+	ID    string `json:"date" bson:"_id"`
+	Count int    `json:"count" bson:"count"`
+}
+
+func (h *ChatAPI) GetParticipation(c *gin.Context) {
+	var query ListRequest
+
+	if err := c.ShouldBindQuery(&query); err != nil {
+		fmt.Println(err)
+		c.JSON(400, gin.H{"msg": "error"})
+		return
+	}
+
+	splited := strings.Split(query.StartDateTime.String(), "+")[0]
+	splited2 := strings.Split(query.EndDateTime.String(), "+")[0]
+	startDateTime, _ := time.Parse("2006-01-02 15:04:05", splited[:len(splited)-1])
+	endDateTime, _ := time.Parse("2006-01-02 15:04:05", splited2[:len(splited2)-1])
+
+	matchStage := bson.D{
+		{Key: "$match", Value: bson.D{
+			{Key: "chatted_at", Value: bson.D{
+				{Key: "$gte", Value: startDateTime},
+				{Key: "$lt", Value: endDateTime},
+			}},
+		}},
+	}
+
+	groupByStage := bson.D{
+		{
+			Key: "$group", Value: bson.D{
+				{Key: "_id", Value: bson.D{
+					{Key: "$dateToString", Value: bson.D{
+						bson.E{Key: "format", Value: "%Y-%m-%d"},
+						bson.E{Key: "date", Value: "$chatted_at"},
+					}},
+				}},
+				{Key: "count", Value: bson.D{bson.E{Key: "$sum", Value: 1}}},
+			},
+		},
+	}
+
+	sortStage := bson.D{
+		{Key: "$sort", Value: bson.D{{Key: "_id", Value: 1}}},
+	}
+
+	pipeline := mongo.Pipeline{matchStage, groupByStage, sortStage}
+
+	cursor, err := h.db.Database("zoom_chat").Collection("chats").Aggregate(context.Background(), pipeline)
+	if err != nil {
+		panic(err)
+	}
+	var results []ParticipationResponse
+	if err := cursor.All(context.Background(), &results); err != nil {
+		panic(err)
+	}
+
+	c.JSON(200, results)
+}
+
 func (h *ChatAPI) GetMostReactor(c *gin.Context) {
 	var query ListRequest
 
@@ -284,7 +344,6 @@ func (h *ChatAPI) Upload(c *gin.Context) {
 
 	fileHeader, _ := c.FormFile("file")
 	date := c.PostForm("date")
-
 	// date Validation
 
 	// File Access

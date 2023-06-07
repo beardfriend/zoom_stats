@@ -7,4 +7,4 @@ services:
     environment:
       - MONGO_INITDB_DATABASE=zoom_chat
     volumes:
-      - ./data:/data/db
+      - /docker/data/zoom_stats/data:/data/db
