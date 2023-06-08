@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import DateDrawer from './components/date';
+import axios from 'axios';
 import {
-  Chart as ChartJS,
+  BarElement,
   CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LineElement,
   LinearScale,
   PointElement,
-  LineElement,
-  BarElement,
   Title,
-  Tooltip,
-  Legend
+  Tooltip
 } from 'chart.js';
-import { subDays, format, subMonths } from 'date-fns';
+import { format, subDays } from 'date-fns';
+import React, { useEffect, useState } from 'react';
 import { Bar, Line } from 'react-chartjs-2';
 import './App.css';
-import axios from 'axios';
+import DateDrawer from './components/date';
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -43,7 +43,19 @@ function App() {
   });
 
   // 공감많이 누른 사람
-
+  const [reactor, setReactor] = useState({ labels: [], datasets: [] });
+  const [reactorOption, setReactorOption] = useState({
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top'
+      },
+      title: {
+        display: true,
+        text: '공감 많이 한 TOP 10'
+      }
+    }
+  });
   // 월별 일간 참여도
   const [participation, setParticipation] = useState({
     labels: [],
@@ -137,20 +149,19 @@ function App() {
   useEffect(() => {
     const ParticipationFetch = async () => {
       try {
-        const nowMonth = format(date, 'MM');
-        // const beforeMonth = format(subMonths(date, 1), 'MM');
+        const beforeDate = subDays(date, 30);
+
         const response = await axios.get(
           'http://localhost:8080/api/chats/participation',
           {
             params: {
-              start_date_time: `${date.getFullYear()}-${nowMonth}-01T00:00:00`,
-              end_date_time: `${date.getFullYear()}-${nowMonth}-30T23:59:59`
+              start_date_time: `${format(beforeDate, 'yyyy-MM-dd')}T00:00:00`,
+              end_date_time: `${format(date, 'yyyy-MM-dd')}T23:59:59`
             }
           }
         );
 
         const jsonData = response.data;
-
         if (jsonData === null) {
           setParticipation({ labels: [], datasets: [] });
           return;
@@ -159,7 +170,7 @@ function App() {
         let labels = [];
         let data = [];
         jsonData.forEach((d) => {
-          labels.push(d._id);
+          labels.push(d.date);
           data.push(d.count);
         });
 
@@ -182,68 +193,60 @@ function App() {
     ParticipationFetch();
   }, [date]);
 
-  // useEffect(() => {
-  //   const fetchData2 = async () => {
-  //     try {
-  //       const response = await axios.get(
-  //         'http://localhost:8080/api/chats/most-reactors',
-  //         {
-  //           params: {
-  //             start_date_time: '2023-06-06T00:00:00',
-  //             end_date_time: '2023-06-06T23:59:59'
-  //           }
-  //         }
-  //       );
-  //       const jsonData = response.data;
-  //       let labels = [];
-  //       let dda = [];
-  //       jsonData.forEach((d) => {
-  //         labels.push(d.name);
-  //         dda.push(d.count);
-  //       });
+  useEffect(() => {
+    const reactorFetch = async () => {
+      try {
+        const response = await axios.get(
+          'http://localhost:8080/api/chats/most-reactors',
+          {
+            params: {
+              start_date_time: `${format(date, 'yyyy-MM-dd')}T00:00:00`,
+              end_date_time: `${format(date, 'yyyy-MM-dd')}T23:59:59`
+            }
+          }
+        );
+        const jsonData = response.data;
+        if (jsonData === null) {
+          setReactor({ labels: [], datasets: [] });
+          return;
+        }
+        const labels = [];
+        const data = [];
+        jsonData.forEach((d) => {
+          labels.push(d.name);
+          data.push(d.count);
+        });
 
-  //       const dd = {
-  //         labels: labels,
-  //         datasets: [
-  //           {
-  //             label: '좋아요 개수',
-  //             data: dda,
-  //             backgroundColor: 'red',
-  //             borderWidth: 1
-  //           }
-  //         ]
-  //       };
-  //       setData2(dd);
-  //       const options = {
-  //         responsive: true,
-  //         plugins: {
-  //           legend: {
-  //             position: 'top'
-  //           },
-  //           title: {
-  //             display: true,
-  //             text: '공감 많이 한 TOP 10'
-  //           }
-  //         }
-  //       };
-  //       setOption2(options);
-  //     } catch (error) {
-  //       console.error('Error:', error);
-  //     }
-  //   };
+        const datas = {
+          labels: labels,
+          datasets: [
+            {
+              label: '좋아요 개수',
+              data: data,
+              backgroundColor: 'red',
+              borderWidth: 1
+            }
+          ]
+        };
 
-  //   fetchData2();
-  // }, []);
+        setReactor(datas);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+
+    reactorFetch();
+  }, [date]);
 
   return (
-    <div className='App'>
+    <div
+      className='App'
+      style={{ padding: '0 10rem', boxSizing: 'content-box' }}
+    >
       <>
-        <DateDrawer date={date} setDate={setDate} />
-        <h2>월별 일간 참여도</h2>
-        <Line data={participation} options={participationOption} />
-
         <h1>이어드림 줌 통계</h1>
-        <div></div>
+        <DateDrawer date={date} setDate={setDate} />
+
         <div style={{ display: 'grid', gridTemplateColumns: `1fr 1fr` }}>
           <div>
             <h3>공감 많이 받은</h3>
@@ -255,24 +258,33 @@ function App() {
           </div>
           <div>
             <h3>공감 많이 한</h3>
-            {/* <Bar data={data2} options={option2} /> */}
+            <Bar data={reactor} options={reactorOption} />
           </div>
-        </div>
-        <div>
-          <h3>화제의 채팅 TOP10</h3>
-          <div
-            style={{ textAlign: 'left', margin: `0 auto`, maxWidth: '1200px' }}
-          >
-            {popularChat.map((d, index) => (
-              <div key={index} className='chatItem'>
-                <p>
-                  {d.chatted_at} {d.sender} : {d.text}{' '}
-                  <span style={{ fontWeight: 'bold' }}>
-                    / {d.react_ids.length}❤️
-                  </span>
-                </p>
-              </div>
-            ))}
+
+          <div>
+            <h3>월별 일간 참여도</h3>
+            <Line data={participation} options={participationOption} />
+          </div>
+          <div>
+            <h3>화제의 채팅 TOP10</h3>
+            <div
+              style={{
+                textAlign: 'left',
+                margin: `0 auto`,
+                maxWidth: '1200px'
+              }}
+            >
+              {popularChat.map((d, index) => (
+                <div key={index} className='chatItem'>
+                  <p>
+                    {d.chatted_at} {d.sender} : {d.text}{' '}
+                    <span style={{ fontWeight: 'bold' }}>
+                      / {d.react_ids.length}❤️
+                    </span>
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </>
