@@ -1,5 +1,14 @@
 version: '3'
 services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - 3000:3000
+    networks:
+      - app-network
+
   mongodb:
     image: mongo
     ports:
@@ -8,3 +17,22 @@ services:
       - MONGO_INITDB_DATABASE=zoom_chat
     volumes:
       - ~/docker/data/zoom_stats/data:/data/db
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+
+networks:
+  app-network:
+
+volumes:
+  mongodb-data:

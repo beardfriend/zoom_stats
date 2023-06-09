@@ -18,7 +18,7 @@ func main() {
 
 	r.Use(cors.New(config))
 
-	client, err := database.NewMongoDB(context.Background(), "mongodb://localhost:27017", "zoom_chat")
+	client, err := database.NewMongoDB(context.Background(), "mongodb://mongodb:27017", "zoom_chat")
 	if err != nil {
 		panic(err)
 	}
